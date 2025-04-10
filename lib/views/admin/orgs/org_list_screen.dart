@@ -155,7 +155,7 @@ class _OrgListScreenState extends State<OrgListScreen> {
                 itemBuilder: (context, index) {
                   final org = filteredOrganizations[index];
                   return Container(
-                    margin: EdgeInsets.only(bottom: 12),
+                     margin: EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
