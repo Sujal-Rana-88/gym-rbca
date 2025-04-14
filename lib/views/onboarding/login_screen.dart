@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:sample_rbca/views/onboarding/verification_screen.dart';
 import 'package:sample_rbca/views/owner/owner_screen.dart';
 import 'package:sample_rbca/views/manager/manager_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,7 +28,7 @@ class LoginScreen extends StatelessWidget {
                 Navigator.pushReplacementNamed(context, '/admin');
                 break;
 
-              case 'owner':
+              case 'ROLE_ORGANIZATION':
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => OwnerScreen()),
@@ -119,6 +120,25 @@ class LoginScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         minimumSize: const Size(double.infinity, 0),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => VerificationScreen(
+                            ),
+                          ),
+                        );
+                      },
+                      child: Text(
+                        "Verify your email",
+                        style: TextStyle(
+                          color: Color(0xFF007AFF),
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ],

@@ -36,12 +36,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           await prefs.setString('access_token', response.data['data']);
           await prefs.setString('role', decodedToken['authorities'] ?? "");
           await prefs.setString('exp', decodedToken['exp'].toString());
-          // final role = await secureStorage.read(key: 'role');
-          // final exp = await secureStorage.read(key: 'exp');
-          // final access = await secureStorage.read(key: 'access_token');
-          // print("Role is : $role");
-          // print("Exp is : $exp");
-          // print(access);
           emit(Authenticated(email: event.email));
         } else {
           emit(AuthError("Login failed. Please try again."));

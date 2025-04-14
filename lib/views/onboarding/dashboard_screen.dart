@@ -25,21 +25,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     print("Role: $role");
     print("Exp: $expString");
 
-    // if(role == 'admin'){
-    //   Navigator.pushReplacementNamed(context, '/admin');
-    //   return;
-    // }
-    // if(role == 'owner'){
-    //   bool subscription = false;
-    //   if(!subscription) Navigator.pushReplacementNamed(context, '/subscription/buy');
-    //
-    //   else Navigator.pushReplacementNamed(context, '/owner');
-    //   return;
-    // }
-    // if(role == 'manager'){
-    //   Navigator.pushReplacementNamed(context, '/manager');
-    //   return;
-    // }
+
     if (accessToken != null && expString != null) {
       int expTime = int.parse(expString) * 1000;
       int currentTime = DateTime.now().millisecondsSinceEpoch;
@@ -49,7 +35,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           case 'ROLE_ADMIN':
             Navigator.pushReplacementNamed(context, '/admin');
             return;
-          case 'ROLE_OWNER':
+          case 'ROLE_ORGANIZATION':
             Navigator.pushReplacementNamed(context, '/owner');
             return;
           case 'ROLE_MANAGER':

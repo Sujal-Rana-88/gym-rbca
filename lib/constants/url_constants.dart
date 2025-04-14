@@ -4,4 +4,7 @@ class URLConstants{
   static const String signup = "auth/authregister";
   static const String getAllOrgs = "organization/getAll";
   static const String addOrg = "organization/add";
+  static const String sendVerificationEmail = "auth/send";
+  static const String verifyEmail = "auth/verifyEmail";
+  static const String setPassword = "auth/setPassword";
 }
