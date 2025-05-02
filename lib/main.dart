@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sample_rbca/routes/routes.dart';
-import 'package:sample_rbca/utils/bloc_providers.dart'; // Import the routes file
+import 'package:sample_rbca/utils/bloc_providers.dart'; 
 
-void main() {
+
+
+void main(){
   runApp(
     MultiBlocProvider(
       providers: AppBlocProviders.providers,
@@ -11,6 +13,8 @@ void main() {
     ),
   );
 }
+
+
 
 class MyApp extends StatelessWidget {
   @override

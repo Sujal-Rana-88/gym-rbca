@@ -12,7 +12,7 @@ part 'auth_state.dart';
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final ApiService apiService = ApiService();
 
-  AuthBloc() : super(AuthInitial()){
+  AuthBloc() : super(AuthInitial()) {
     on<SignInRequested>((event, emit) async {
       emit(AuthLoading());
 
@@ -24,23 +24,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             "password": event.password,
           },
         );
+
         if (response.statusCode == 200) {
           Map<String, dynamic> decodedToken = {};
+          String accessToken;
+
           try {
-            decodedToken = JwtDecoder.decode(response.data['data']);
+            accessToken = response.data['data']['accessToken'];
+            decodedToken = JwtDecoder.decode(accessToken);
           } catch (e) {
             emit(AuthError("Invalid token format."));
             return;
           }
+
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('access_token', response.data['data']);
+          await prefs.setString('accessToken', accessToken);
           await prefs.setString('role', decodedToken['authorities'] ?? "");
           await prefs.setString('exp', decodedToken['exp'].toString());
           emit(Authenticated(email: event.email));
         } else {
           emit(AuthError("Login failed. Please try again."));
         }
-      } catch (exception){
+      } catch (exception) {
         String errorMessage = "An unknown error occurred.";
         if (exception is DioException) {
           if (exception.response != null &&

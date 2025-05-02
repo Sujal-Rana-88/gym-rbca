@@ -51,7 +51,7 @@ class _OrgListScreenState extends State<OrgListScreen> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      String? accessToken = prefs.getString('access_token');
+      String? accessToken = prefs.getString('accessToken');
 
       final response = await _dio.get(
         '$baseUrl$getAllOrgsEndpoint',
@@ -65,17 +65,20 @@ class _OrgListScreenState extends State<OrgListScreen> {
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = response.data;
 
-        if (responseData['statusCode'] == 200 && responseData['message'] == "Success") {
+        if (responseData['statusCode'] == 200) {
           List<dynamic> data = responseData['data'];
-          organizations = data.map<Map<String, dynamic>>((item) => {
-            "org_id": item["organizationId"] ?? "",
-            "name": item["organizationName"] ?? "N/A",
-            "email": "contact@example.com",
-            "country_code": item["countryCode"] ?? "",
-            "phone": item["mobileNumber"] ?? "",
-            "address": item["address"] ?? "N/A",
-            "subscription_end_date": DateTime.now().add(Duration(days: 30)),
-          }).toList();
+          organizations = data
+              .map<Map<String, dynamic>>((item) => {
+                    "org_id": item["organizationId"] ?? "",
+                    "name": item["organizationName"] ?? "N/A",
+                    "email": "contact@example.com",
+                    "country_code": item["countryCode"] ?? "",
+                    "phone": item["organizationMobileNumber"] ?? "",
+                    "address": item["address"] ?? "N/A",
+                    "subscription_end_date":
+                        DateTime.now().add(Duration(days: 30)),
+                  })
+              .toList();
           filteredOrganizations = List.from(organizations);
         } else {
           print("API Error: ${responseData['message']}");
@@ -109,7 +112,8 @@ class _OrgListScreenState extends State<OrgListScreen> {
         filteredOrganizations = List.from(organizations);
       } else {
         filteredOrganizations = organizations
-            .where((org) => org["name"].toLowerCase().contains(query.toLowerCase()))
+            .where((org) =>
+                org["name"].toLowerCase().contains(query.toLowerCase()))
             .toList();
       }
     });
@@ -132,7 +136,10 @@ class _OrgListScreenState extends State<OrgListScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
-                  BoxShadow(color: Colors.black12, blurRadius: 5, offset: Offset(0, 3))
+                  BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 5,
+                      offset: Offset(0, 3))
                 ],
               ),
               child: TextField(
@@ -142,7 +149,8 @@ class _OrgListScreenState extends State<OrgListScreen> {
                   hintText: "Search organizations...",
                   prefixIcon: Icon(Icons.search, color: Color(0xFF1E88E5)),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
               ),
             ),
@@ -150,57 +158,70 @@ class _OrgListScreenState extends State<OrgListScreen> {
             Expanded(
               child: _loading
                   ? Center(child: CircularProgressIndicator())
-                  : ListView.builder(
-                itemCount: filteredOrganizations.length,
-                itemBuilder: (context, index) {
-                  final org = filteredOrganizations[index];
-                  return Container(
-                     margin: EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 3))
-                      ],
-                    ),
-                    child: ListTile(
-                      contentPadding: EdgeInsets.all(16),
-                      title: Text(
-                        org["name"],
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(height: 5),
-                          Text("📧 ${org["email"]}"),
-                          Text("📍 ${org["address"]}"),
-                          Text("📞 ${org["country_code"]} ${org["phone"]}"),
-                          Text("📅 Subscription Ends: ${_formatDate(org["subscription_end_date"])}"),
-                        ],
-                      ),
-                      trailing: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF1E88E5),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => OrgDetailsScreen(orgId: org["org_id"]!),
+                  : RefreshIndicator(
+                      onRefresh: fetchOrganizations,
+                      child: ListView.builder(
+                        physics:
+                            const AlwaysScrollableScrollPhysics(), // Required to allow pull even when content is less
+                        itemCount: filteredOrganizations.length,
+                        itemBuilder: (context, index) {
+                          final org = filteredOrganizations[index];
+                          return Container(
+                            margin: EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                    color: Colors.black12,
+                                    blurRadius: 4,
+                                    offset: Offset(0, 3))
+                              ],
+                            ),
+                            child: ListTile(
+                              contentPadding: EdgeInsets.all(16),
+                              title: Text(
+                                org["name"],
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 18),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(height: 5),
+                                  Text("📧 ${org["email"]}"),
+                                  Text("📍 ${org["address"]}"),
+                                  Text(
+                                      "📞 ${org["country_code"]} ${org["phone"]}"),
+                                  Text(
+                                      "📅 Subscription Ends: ${_formatDate(org["subscription_end_date"])}"),
+                                ],
+                              ),
+                              trailing: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Color(0xFF1E88E5),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                ),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => OrgDetailsScreen(
+                                          orgId: org["org_id"]!),
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  "View",
+                                  style: TextStyle(color: Color(0xFFF5F5F5)),
+                                ),
+                              ),
                             ),
                           );
                         },
-                        child: Text(
-                          "View",
-                          style: TextStyle(color: Color(0xFFF5F5F5)),
-                        ),
                       ),
                     ),
-                  );
-                },
-              ),
             ),
           ],
         ),
@@ -208,7 +229,9 @@ class _OrgListScreenState extends State<OrgListScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => showDialog(
           context: context,
-          builder: (context) => AddOrgScreen(formData: formData,),
+          builder: (context) => AddOrgScreen(
+            formData: formData,
+          ),
         ),
         backgroundColor: Color(0xFF1E88E5),
         child: const Icon(Icons.add, color: Colors.white),

@@ -17,7 +17,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _navigateBasedOnAuth() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance(); // Await the Future here
 
-    String? accessToken = prefs.getString('access_token');
+    String? accessToken = prefs.getString('accessToken');
     String? role = prefs.getString('role');
     String? expString = prefs.getString('exp');
 
@@ -35,7 +35,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           case 'ROLE_ADMIN':
             Navigator.pushReplacementNamed(context, '/admin');
             return;
-          case 'ROLE_ORGANIZATION':
+          case 'ROLE_OWNER':
             Navigator.pushReplacementNamed(context, '/owner');
             return;
           case 'ROLE_MANAGER':

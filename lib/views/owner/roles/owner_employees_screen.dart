@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../widgets/add_role_screen.dart';
 import '../../../widgets/cards/employee_card.dart';
 import '../../../widgets/show_org_details.dart';
@@ -15,6 +17,8 @@ class _OwnerEmployeesScreenState extends State<OwnerEmployeesScreen> {
   String selectedRole = "All";
   int _currentIndex = 1;
   List<String> _menuItems = ['Home', 'Roles'];
+
+  // Organization static data (for org info dialog only)
   final Map<String, dynamic> organization = {
     "org_id": "org_123",
     "name": "XYZ Gym",
@@ -26,61 +30,79 @@ class _OwnerEmployeesScreenState extends State<OwnerEmployeesScreen> {
     "total_users": 25,
     "joined_date": DateTime.now().subtract(Duration(days: 365)),
     "description":
-    "A premium fitness center with state-of-the-art equipment and certified trainers."
+        "A premium fitness center with state-of-the-art equipment and certified trainers."
   };
+
+  List<Map<String, dynamic>> users = [];
+  bool isLoading = false;
+  String errorMessage = '';
+
   @override
   void initState() {
     super.initState();
     _loadPermissions();
+    _fetchEmployees(); // Directly fetch employees from API
   }
 
   Future<void> _loadPermissions() async {
-    final prefs = await SharedPreferences.getInstance();
-    List<String>? permissions = prefs.getStringList('permissions');
-
     setState(() {
-      _menuItems = ['Home', 'Roles']; // Always include Home and Roles
-
+      _menuItems = ['Home', 'Roles'];
     });
   }
-  final List<Map<String, String>> users = [
-    {
-      "user_id": "user_1",
-      "name": "John Doe",
-      "email": "john@example.com",
-      "role": "Owner",
-      "phone_number": "9876543210",
-      "country_code": "+91",
-      "is_verified": "true"
-    },
-    {
-      "user_id": "user_2",
-      "name": "Jane Smith",
-      "email": "jane@example.com",
-      "role": "Owner",
-      "phone_number": "1234567890",
-      "country_code": "+91",
-      "is_verified": "false"
-    },
-    {
-      "user_id": "user_3",
-      "name": "Alice Brown",
-      "email": "alice@example.com",
-      "role": "Employee",
-      "phone_number": "8765432109",
-      "country_code": "+91",
-      "is_verified": "true"
-    },
-  ];
 
-  void _showAddDialog() {
-      showDialog(
-        context: context,
-        builder: (context) => AddRoleScreen(
-          roles: ["Owner",  "Employee"],
+  Future<void> _fetchEmployees() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = '';
+    });
+    try {
+      // TODO: Replace with your real logic for acquiring the token
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('accessToken') ?? '';
+      final orgId = organization['org_id'];
+
+      final dio = Dio();
+      final response = await dio.get(
+        'http://10.0.2.2:8081/api/users/getAll',
+        queryParameters: {'orgId': orgId},
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
         ),
       );
 
+      if (response.statusCode == 200 && response.data['data'] != null) {
+        // Make sure response.data['data'] is a List
+        final allUsers = List<Map<String, dynamic>>.from(response.data['data']);
+        // Only EMPLOYEE
+        final employeeUsers = allUsers
+            .where((u) => (u['role']?.toString()?.toUpperCase() ?? '') == 'EMPLOYEE')
+            .toList();
+        setState(() {
+          users = employeeUsers;
+        });
+      } else {
+        setState(() {
+          errorMessage = 'Failed to load users';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Failed to fetch users: $e';
+      });
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  void _showAddDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AddRoleScreen(
+        roles: ["Owner", "Employee"],
+      ),
+    );
   }
 
   @override
@@ -128,35 +150,38 @@ class _OwnerEmployeesScreenState extends State<OwnerEmployeesScreen> {
               ),
             ),
           ),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12.0),
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: selectedRole,
-              items: ["All", "Owner","Employee"].map((role) {
-                return DropdownMenuItem<String>(
-                  value: role,
-                  child: Text(role),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  selectedRole = value!;
-                });
-              },
-            ),
-          ),
           Expanded(
-            child: ListView.builder(
-              itemCount: users.length,
-              itemBuilder: (context, index) {
-                final user = users[index]; // Get the individual user
-                if ((selectedRole == "All" || user["role"] == selectedRole) &&
-                    (user["name"]!.toLowerCase().contains(searchQuery) ||
-                        user["email"]!.toLowerCase().contains(searchQuery))) {
-                  return EmployeeCard(user: user);
+            child: Builder(
+              builder: (context) {
+                if (isLoading) {
+                  return Center(child: CircularProgressIndicator());
+                } else if (errorMessage.isNotEmpty) {
+                  return Center(child: Text(errorMessage,
+                      style: TextStyle(color: Colors.red)));
+                } else if (users.isEmpty) {
+                  return Center(child: Text("No employees found."));
                 }
-                return Container();
+                // Search by name or email
+                final filteredUsers = users.where((user) {
+                  final name = (user['name'] ?? '').toLowerCase();
+                  final email = (user['email'] ?? '').toLowerCase();
+                  return name.contains(searchQuery) ||
+                      email.contains(searchQuery);
+                }).toList();
+
+                if (filteredUsers.isEmpty) {
+                  return Center(child: Text("No employees found for your search."));
+                }
+
+                return ListView.builder(
+                  itemCount: filteredUsers.length,
+                  itemBuilder: (context, index) {
+                    final user = filteredUsers[index];
+                    return EmployeeCard(
+  user: user.map((key, value) => MapEntry(key, value?.toString() ?? '')),
+);
+                  },
+                );
               },
             ),
           ),
@@ -170,3 +195,4 @@ class _OwnerEmployeesScreenState extends State<OwnerEmployeesScreen> {
     );
   }
 }
+

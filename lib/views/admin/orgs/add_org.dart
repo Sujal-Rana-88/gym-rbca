@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:email_validator/email_validator.dart';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../constants/app_constants.dart';
 import '../../../constants/url_constants.dart';
 
@@ -42,7 +43,8 @@ class _AddOrgScreenState extends State<AddOrgScreen> {
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
         validator: (value) {
           if (value == null || value.isEmpty) {
@@ -71,29 +73,37 @@ class _AddOrgScreenState extends State<AddOrgScreen> {
   Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-
+      final prefs = await SharedPreferences.getInstance();
       final String baseUrl = APPConstants.BASE_URL;
       final String addOrgEndpoint = URLConstants.addOrg;
-
+      String? token = prefs.getString('accessToken');
       final Map<String, dynamic> requestData = {
         "organizationName": widget.formData["org_name"],
-        "address": widget.formData["address"],
-        "mobileNumber": widget.formData["phone"],
-        "countryCode": widget.formData["country_code"],
-        "email": widget.formData["email"],
-        "firstName": widget.formData["owner_first_name"], // Use first name
-        "lastName": widget.formData["owner_last_name"],  // Use last name
+        "organizationAddress": widget.formData["address"],
+        "organizationMobileNumber": widget.formData["phone"],
+        "organizationCountryCode": widget.formData["country_code"],
+        "organizationEmail": widget.formData["org_email"], // fixed
+        "firstName": widget.formData["owner_first_name"],
+        "lastName": widget.formData["owner_last_name"],
+        "fatherName": widget.formData["father_name"],
         "userAddress": widget.formData["owner_address"],
+        "userEmail": widget.formData["user_email"],
         "userCountryCode": widget.formData["owner_country_code"],
         "userMobileNumber": widget.formData["owner_phone"],
-        "role": "organization",
-        "organizationGstin": widget.formData["org_id"]
+        "role": "owner",
+        "organizationGstin": widget.formData["org_gstin"], // fixed
       };
 
       try {
         final response = await _dio.post(
           '$baseUrl$addOrgEndpoint',
           data: requestData,
+          options: Options(
+            headers: {
+              "Authorization": "Bearer $token",
+              "Content-Type": "application/json",
+            },
+          ),
         );
 
         if (response.statusCode == 200) {
@@ -104,13 +114,16 @@ class _AddOrgScreenState extends State<AddOrgScreen> {
         } else {
           print("API Error: ${response.statusCode}");
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Failed to add organization. Status code: ${response.statusCode}")),
+            SnackBar(
+                content: Text(
+                    "Failed to add organization. Status code: ${response.statusCode}")),
           );
         }
       } catch (e) {
         print("Error submitting form: $e");
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("An error occurred while submitting the form: $e")),
+          SnackBar(
+              content: Text("An error occurred while submitting the form")),
         );
       }
     }
@@ -120,7 +133,8 @@ class _AddOrgScreenState extends State<AddOrgScreen> {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
       if (_currentStep < 2) {
-        _pageController.nextPage(duration: Duration(milliseconds: 300), curve: Curves.easeInOut);
+        _pageController.nextPage(
+            duration: Duration(milliseconds: 300), curve: Curves.easeInOut);
         setState(() {
           _currentStep++;
         });
@@ -132,7 +146,8 @@ class _AddOrgScreenState extends State<AddOrgScreen> {
 
   void _previousStep() {
     if (_currentStep > 0) {
-      _pageController.previousPage(duration: Duration(milliseconds: 300), curve: Curves.easeInOut);
+      _pageController.previousPage(
+          duration: Duration(milliseconds: 300), curve: Curves.easeInOut);
       setState(() {
         _currentStep--;
       });
@@ -150,9 +165,13 @@ class _AddOrgScreenState extends State<AddOrgScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            LinearProgressIndicator(value: (_currentStep + 1) / 3, backgroundColor: Colors.grey[300], color: Colors.blueAccent),
+            LinearProgressIndicator(
+                value: (_currentStep + 1) / 3,
+                backgroundColor: Colors.grey[300],
+                color: Colors.blueAccent),
             SizedBox(height: 8),
-            Text("Step ${_currentStep + 1}/3", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text("Step ${_currentStep + 1}/3",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             Expanded(
               child: Form(
                 key: _formKey,
@@ -164,23 +183,31 @@ class _AddOrgScreenState extends State<AddOrgScreen> {
                       child: Column(
                         children: [
                           _buildTextField("Organization Name", "org_name"),
-                          _buildTextField("Email", "email"),
-                          _buildTextField("Country Code", "country_code", initialValue: "+91"),
-                          _buildTextField("Phone", "phone"),
-                          _buildTextField("Address", "address"),
-                          _buildTextField("Org ID (CIN/GSTIN)", "org_id"),
+                          _buildTextField("Country Code", "country_code",
+                              initialValue: "+91"),
+                          _buildTextField(
+                              "organization Mobile Number", "phone"),
+                          _buildTextField("organization Email", "org_email"),
+                          _buildTextField("organization Address", "address"),
+                          _buildTextField("Org ID (CIN/GSTIN)", "org_gstin"),
                         ],
                       ),
                     ),
                     SingleChildScrollView(
                       child: Column(
                         children: [
-                          _buildTextField("Owner First Name", "owner_first_name"), // First name field
-                          _buildTextField("Owner Last Name", "owner_last_name"),  // Last name field
-                          _buildTextField("Owner Country Code", "owner_country_code", initialValue: "+91"),
+                          _buildTextField("Owner First Name",
+                              "owner_first_name"), // First name field
+                          _buildTextField("Owner Last Name",
+                              "owner_last_name"), // Last name field
+                          _buildTextField("Owner Father Name",
+                              "father_name"), // Last name field
+                          _buildTextField(
+                              "Owner Country Code", "owner_country_code",
+                              initialValue: "+91"),
                           _buildTextField("Owner Phone", "owner_phone"),
                           _buildTextField("Owner Address", "owner_address"),
-                          _buildTextField("Owner Email", "email"),
+                          _buildTextField("Owner Email", "user_email"),
                         ],
                       ),
                     ),
@@ -201,7 +228,8 @@ class _AddOrgScreenState extends State<AddOrgScreen> {
                             DropdownButtonFormField<String>(
                               decoration: InputDecoration(
                                 labelText: "Select Subscription",
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12)),
                               ),
                               items: subscriptionOptions.map((sub) {
                                 return DropdownMenuItem(
@@ -226,15 +254,18 @@ class _AddOrgScreenState extends State<AddOrgScreen> {
                 if (_currentStep > 0)
                   OutlinedButton(
                     onPressed: _previousStep,
-                    child: Text("Back", style: TextStyle(color: Colors.blueAccent)),
+                    child: Text("Back",
+                        style: TextStyle(color: Colors.blueAccent)),
                   ),
                 ElevatedButton(
                   onPressed: _nextStep,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blueAccent,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: Text(_currentStep == 2 ? "Submit" : "Next", style: TextStyle(color: Colors.white)),
+                  child: Text(_currentStep == 2 ? "Submit" : "Next",
+                      style: TextStyle(color: Colors.white)),
                 ),
               ],
             ),

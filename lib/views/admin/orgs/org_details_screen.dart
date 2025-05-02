@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:sample_rbca/views/admin/orgs/add_org_subscription.dart';
 import '../../../widgets/add_role_screen.dart';
 import 'package:intl/intl.dart';
-
 import '../../../widgets/cards/employee_card.dart';
 import '../../../widgets/show_org_details.dart';
 import '../../../widgets/cards/user_card.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OrgDetailsScreen extends StatefulWidget {
   final String orgId;
@@ -16,10 +17,12 @@ class OrgDetailsScreen extends StatefulWidget {
   _OrgDetailsScreenState createState() => _OrgDetailsScreenState();
 }
 
-class _OrgDetailsScreenState extends State<OrgDetailsScreen>
-    with SingleTickerProviderStateMixin {
+class _OrgDetailsScreenState extends State<OrgDetailsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String searchQuery = "";
+  late Dio _dio;
+  List<dynamic> users = [];
+  List<dynamic> subscriptions = [];
 
   final Map<String, dynamic> organization = {
     "org_id": "org_123",
@@ -33,88 +36,54 @@ class _OrgDetailsScreenState extends State<OrgDetailsScreen>
     "joined_date": DateTime.now().subtract(Duration(days: 365)),
   };
 
-  final List<Map<String, String>> users = [
-    {
-      "user_id": "user_1",
-      "name": "John Doe",
-      "email": "john@example.com",
-      "role": "Admin",
-      "phone_number": "9876543210",
-      "is_verified": "true"
-    },
-    {
-      "user_id": "user_2",
-      "name": "Jane Smith",
-      "email": "jane@example.com",
-      "role": "User",
-      "phone_number": "1234567890",
-      "is_verified": "false"
-    },
-    {
-      "user_id": "user_3",
-      "name": "Alice Brown",
-      "email": "alice@example.com",
-      "role": "Employee",
-      "phone_number": "8765432109",
-      "is_verified": "true"
-    },
-    {
-      "user_id": "user_4",
-      "name": "Bob Johnson",
-      "email": "bob@example.com",
-      "role": "User",
-      "phone_number": "5678901234",
-      "is_verified": "true"
-    },
-    {
-      "user_id": "user_5",
-      "name": "Carol White",
-      "email": "carol@example.com",
-      "role": "Admin",
-      "phone_number": "4567890123",
-      "is_verified": "true"
-    },
-    {
-      "user_id": "user_6",
-      "name": "David Black",
-      "email": "david@example.com",
-      "role": "Employee",
-      "phone_number": "3456789012",
-      "is_verified": "false"
-    },
-  ];
-
-  final List<Map<String, dynamic>> subscriptions = [
-    {
-      "subscription_id": "sub_456",
-      "package": "6 Months",
-      "duration": 6,
-      "price": 123.0,
-      "title": "Basic Plan",
-      "description": "Access to gym facilities for 6 months."
-    },
-    {
-      "subscription_id": "sub_789",
-      "package": "12 Months",
-      "duration": 12,
-      "price": 199.0,
-      "title": "Annual Plan",
-      "description": "Full-year access with additional benefits."
-    },
-    {
-      "subscription_id": "sub_101",
-      "package": "3 Months",
-      "duration": 3,
-      "price": 79.0,
-      "title": "Quarterly Plan",
-      "description": "Short-term gym access for 3 months."
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _dio = Dio();
+    _fetchData();
+  }
+
+  Future<void> _fetchData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('accessToken') ?? '';
+
+    try {
+      // Fetch users
+      final userResponse = await _dio.get(
+        'http://10.0.2.2:8081/api/users/getAll',
+        queryParameters: {'organizationId': widget.orgId},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token', // Send as Bearer token
+          },
+        ),
+      );
+
+      if (userResponse.statusCode == 200) {
+        setState(() {
+          users = userResponse.data['data'];
+        });
+      }
+
+      // Fetch subscriptions
+      final subscriptionResponse = await _dio.get(
+        'http://10.0.2.2:8081/api/subscription/getAll', 
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token', // Send as Bearer token
+          },
+        ),
+      );
+
+      if (subscriptionResponse.statusCode == 200) {
+        setState(() {
+          subscriptions = subscriptionResponse.data['data'];
+        });
+      }
+    } catch (e) {
+      print('Error fetching data: $e');
+    }
   }
 
   void _showAddDialog() {
@@ -143,8 +112,7 @@ class _OrgDetailsScreenState extends State<OrgDetailsScreen>
   void _editSubscription(int index) async {
     final updatedSubscription = await showDialog(
       context: context,
-      builder: (context) =>
-          AddOrgSubscription(subscription: subscriptions[index]),
+      builder: (context) => AddOrgSubscription(subscription: subscriptions[index]),
     );
 
     if (updatedSubscription != null) {
@@ -184,11 +152,9 @@ class _OrgDetailsScreenState extends State<OrgDetailsScreen>
     );
   }
 
-  // Helper method to build user list based on role filter
   Widget _buildUserList(List<String> roleFilter) {
     return Column(
       children: [
-        // Search bar
         Padding(
           padding: EdgeInsets.all(12.0),
           child: TextField(
@@ -200,21 +166,20 @@ class _OrgDetailsScreenState extends State<OrgDetailsScreen>
             decoration: InputDecoration(
               hintText: "Search by name or email...",
               prefixIcon: Icon(Icons.search),
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
             ),
           ),
         ),
-        // Filtered user list
         Expanded(
           child: ListView.builder(
             itemCount: users.length,
             itemBuilder: (context, index) {
               final user = users[index];
-              if (roleFilter.contains(user["role"]) &&
-                  (user["name"]!.toLowerCase().contains(searchQuery) ||
-                      user["email"]!.toLowerCase().contains(searchQuery))) {
-                return EmployeeCard(user: user);
+              if (user != null &&
+                  roleFilter.contains(user["role"]) &&
+                  (user["firstName"]?.toLowerCase().contains(searchQuery) ?? false ||
+                   user["userEmail"]?.toLowerCase().contains(searchQuery) ?? false)) {
+                return UserCard(user: user); // Custom card widget
               }
               return Container();
             },
@@ -229,7 +194,7 @@ class _OrgDetailsScreenState extends State<OrgDetailsScreen>
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(organization["name"],
+        title: Text(organization["name"] ?? "Organization Details", 
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         centerTitle: true,
         elevation: 0,
@@ -257,58 +222,56 @@ class _OrgDetailsScreenState extends State<OrgDetailsScreen>
         controller: _tabController,
         children: [
           // Admin and Employee tab
-          _buildUserList(["Admin", "Employee"]),
-
+          _buildUserList(["OWNER", "MANAGER", "EMPLOYEE"]),
           // Users tab
-          _buildUserList(["User"]),
-
+          _buildUserList(["MEMBER"]),
           // Subscriptions tab
           ListView.builder(
             itemCount: subscriptions.length,
             itemBuilder: (context, index) {
               final subscription = subscriptions[index];
-              return Container(
-                margin: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 4,
-                        offset: Offset(0, 3))
-                  ],
-                ),
-                child: ListTile(
-                  contentPadding: EdgeInsets.all(16),
-                  title: Text(
-                    subscription["title"]!,
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(height: 5),
-                      Text(subscription["description"]!),
-                      Text("📆 Duration: ${subscription["duration"]} Months"),
-                      Text("💰 Price: \$${subscription["price"]}"),
+              if (subscription != null) {
+                return Container(
+                  margin: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 3))
                     ],
                   ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () => _editSubscription(index),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.delete, color: Color(0xFF1E88E5)),
-                        onPressed: () => _deleteSubscription(index),
-                      ),
-                    ],
+                  child: ListTile(
+                    contentPadding: EdgeInsets.all(16),
+                    title: Text(
+                      subscription["subscriptionType"] ?? "No Title",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(height: 5),
+                        Text(subscription["description"] ?? "No Description"),
+                        Text("📆 Duration: ${subscription["duration"] ?? 0} Months"),
+                        Text("💰 Price: \$${subscription["price"] ?? 0}"),
+                      ],
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () => _editSubscription(index),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.delete, color: Color(0xFF1E88E5)),
+                          onPressed: () => _deleteSubscription(index),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
+                );
+              }
+              return Container(); // Prevent layout issues if subscription is null
             },
           ),
         ],

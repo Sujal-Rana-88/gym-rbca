@@ -28,7 +28,7 @@ class LoginScreen extends StatelessWidget {
                 Navigator.pushReplacementNamed(context, '/admin');
                 break;
 
-              case 'ROLE_ORGANIZATION':
+              case 'ROLE_OWNER':
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => OwnerScreen()),

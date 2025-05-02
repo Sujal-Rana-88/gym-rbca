@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class UserCard extends StatelessWidget {
-  final Map<String, String> user;
+  final Map<String, dynamic> user; // Use dynamic type to allow mixed types
 
   const UserCard({Key? key, required this.user}) : super(key: key);
 
@@ -19,18 +19,24 @@ class UserCard extends StatelessWidget {
       child: ListTile(
         contentPadding: EdgeInsets.all(16),
         title: Text(
-          user["name"]!,
+          (user["firstName"]?.toString() ?? 'No first name') +
+              ' ' +
+              (user["lastName"]?.toString() ??
+                  'No last name'), // Concatenate first and last name
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(height: 5),
-            Text("📧 ${user["email"]}"),
-            Text("📞 ${user["country_code"]} ${user["phone_number"]}"),
-            Text("🏷 Role: ${user["role"]}"),
-            Text("✅ Subscription End Date: ${user["subscription_end_date"]}"),
-            Text("🏘️ Address: ${user["address"]}"),
+            Text("📧 ${user["userEmail"]?.toString() ?? 'No email'}"),
+            Text(
+                "📞 ${user["userCountryCode"]?.toString() ?? ''} ${user["phone_number"]?.toString() ?? 'No phone number'}"),
+            Text("🏷 Role: ${user["role"]?.toString() ?? 'No role'}"),
+            Text(
+                "✅ Subscription End Date: ${user["subscription_end_date"]?.toString() ?? 'No end date'}"),
+            Text(
+                "🏘️ Address: ${user["userAddress"]?.toString() ?? 'No address'}"),
           ],
         ),
       ),
